@@ -13,7 +13,15 @@ import logging
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    MofNCompleteColumn,
+    TimeElapsedColumn,
+)
 from rich.panel import Panel
 from rich.table import Table
 
@@ -108,7 +116,9 @@ async def main_async():
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
+        MofNCompleteColumn(),
         TaskProgressColumn(),
+        TimeElapsedColumn(),
         console=console,
     ) as progress:
         task = progress.add_task("[yellow]Generating dialogues...", total=args.num_samples)
