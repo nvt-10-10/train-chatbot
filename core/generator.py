@@ -73,6 +73,7 @@ Hội thoại phải có ít nhất 2 lượt trao đổi (user - assistant - us
                 response = await self.client.generate(
                     model=self.model_name,
                     prompt=prompt,
+                    format="json",
                     options={"temperature": 0.7, "top_p": 0.9},
                 )
                 raw_text = response.get("response", "").strip()
@@ -83,11 +84,17 @@ Hội thoại phải có ít nhất 2 lượt trao đổi (user - assistant - us
                 elif "```" in raw_text:
                     raw_text = raw_text.split("```")[1].split("```")[0].strip()
 
-                data = json.loads(raw_text)
+                try:
+                    data = json.loads(raw_text)
+                except json.JSONDecodeError:
+                    # Robust fallback: replace unescaped control characters
+                    cleaned_text = raw_text.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+                    data = json.loads(cleaned_text)
+
                 if isinstance(data, dict) and "messages" in data:
                     return data
             except Exception as e:
-                logger.warning(f"Error generating dialogue: {e}")
+                logger.warning(f"Error parsing dialogue JSON: {e}")
                 return None
             return None
 
