@@ -114,5 +114,5 @@ Hội thoại phải có ít nhất 2 lượt trao đổi (user - assistant - us
             if res:
                 results.append(res)
             if progress_callback:
-                progress_callback(1)
+                progress_callback(1, res)
         return results

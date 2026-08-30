@@ -109,9 +109,11 @@ async def main_async():
         model_name=args.ollama_model, host=args.ollama_host, concurrency=args.concurrency
     )
 
-    console.print("\n[bold green]🚀 Step 1: Generating Synthetic Consulting Dialogues via Ollama...[/bold green]")
+    console.print("\n[bold green]🚀 Step 1: Generating Synthetic Consulting Dialogues via Ollama...[/bold green]\n")
     
     samples = []
+    sample_counter = 0
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -123,8 +125,26 @@ async def main_async():
     ) as progress:
         task = progress.add_task("[yellow]Generating dialogues...", total=args.num_samples)
         
-        def update_progress(count: int):
+        def update_progress(count: int, sample: Optional[Dict[str, Any]] = None):
+            nonlocal sample_counter
             progress.update(task, advance=count)
+            if sample and isinstance(sample, dict) and "messages" in sample:
+                sample_counter += 1
+                messages = sample.get("messages", [])
+                
+                # Extract first User and Assistant content for preview
+                user_msg = next((m.get("content") for m in messages if m.get("role") == "user"), "")
+                ast_msg = next((m.get("content") for m in messages if m.get("role") == "assistant"), "")
+                
+                # Print live preview panel in console
+                console.print(
+                    Panel(
+                        f"[bold cyan]👤 Khách hàng:[/bold cyan] {user_msg[:180]}...\n\n"
+                        f"[bold green]🤖 Shop tư vấn:[/bold green] {ast_msg[:250]}...",
+                        title=f"[bold bright_yellow]✨ Live Preview [Mẫu #{sample_counter} Complete][/bold bright_yellow]",
+                        border_style="cyan",
+                    )
+                )
 
         samples = await generator.generate_dataset(
             num_samples=args.num_samples, progress_callback=update_progress
