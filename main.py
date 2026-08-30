@@ -8,6 +8,7 @@ import asyncio
 import os
 import sys
 import logging
+from typing import Optional, Dict, Any
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
