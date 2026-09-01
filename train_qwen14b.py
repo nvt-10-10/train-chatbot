@@ -146,16 +146,11 @@ def main():
         return {"text": texts}
 
     # 7. Load & Prepare Dataset
-    print("🔄 Loading & Formatting Dataset...")
+    print("🔄 Loading Dataset...")
     full_dataset = load_dataset("json", data_files=dataset_path, split="train")
     split_dataset = full_dataset.train_test_split(test_size=0.1, seed=3407)
-    column_names = full_dataset.column_names
-    train_dataset = split_dataset["train"].map(
-        formatting_prompts_func, batched=True, remove_columns=column_names
-    )
-    eval_dataset = split_dataset["test"].map(
-        formatting_prompts_func, batched=True, remove_columns=column_names
-    )
+    train_dataset = split_dataset["train"]
+    eval_dataset = split_dataset["test"]
 
     print(f"📊 Tổng mẫu: {len(full_dataset)} | Train: {len(train_dataset)} | Validation: {len(eval_dataset)}")
 
@@ -217,7 +212,7 @@ def main():
         tokenizer=tokenizer,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        dataset_text_field="text",
+        formatting_func=formatting_prompts_func,
         max_seq_length=max_seq_length,
         dataset_num_proc=2,
         packing=False,
