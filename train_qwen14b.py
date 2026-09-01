@@ -137,19 +137,26 @@ def main():
 
     def formatting_prompts_func(examples):
         convos = examples["messages"]
-        if isinstance(convos[0], dict):
-            return [tokenizer.apply_chat_template(convos, tokenize=False, add_generation_prompt=False)]
-        return [
-            tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False)
+        texts = [
+            tokenizer.apply_chat_template(
+                convo, tokenize=False, add_generation_prompt=False
+            )
             for convo in convos
         ]
+        return {"text": texts}
 
     # 7. Load & Prepare Dataset
-    print("🔄 Loading Dataset...")
+    print("🔄 Loading & Formatting Dataset...")
     full_dataset = load_dataset("json", data_files=dataset_path, split="train")
     split_dataset = full_dataset.train_test_split(test_size=0.1, seed=3407)
-    train_dataset = split_dataset["train"]
-    eval_dataset = split_dataset["test"]
+    
+    column_names = full_dataset.column_names
+    train_dataset = split_dataset["train"].map(
+        formatting_prompts_func, batched=True, remove_columns=column_names
+    )
+    eval_dataset = split_dataset["test"].map(
+        formatting_prompts_func, batched=True, remove_columns=column_names
+    )
 
     print(f"📊 Tổng mẫu: {len(full_dataset)} | Train: {len(train_dataset)} | Validation: {len(eval_dataset)}")
 
@@ -211,7 +218,7 @@ def main():
         tokenizer=tokenizer,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        formatting_func=formatting_prompts_func,
+        dataset_text_field="text",
         max_seq_length=max_seq_length,
         dataset_num_proc=2,
         packing=False,
@@ -235,7 +242,7 @@ def main():
             lr_scheduler_type="linear",
             seed=3407,
             report_to="none",
-            remove_unused_columns=False,
+            remove_unused_columns=True,
         ),
     )
 
