@@ -129,22 +129,6 @@ def main():
         random_state=3407,
     )
 
-    # Patch model.forward to clone loss tensor preventing PyTorch autograd inplace view errors
-    _orig_forward = model.forward
-    def _patched_forward(*args, **kwargs):
-        outputs = _orig_forward(*args, **kwargs)
-        if hasattr(outputs, "loss") and outputs.loss is not None:
-            outputs.loss = outputs.loss.clone()
-        elif isinstance(outputs, tuple) and len(outputs) > 0 and isinstance(outputs[0], torch.Tensor):
-            outputs = (outputs[0].clone(),) + outputs[1:]
-        return outputs
-    model.forward = _patched_forward
-    if hasattr(model, "base_model"):
-        try:
-            model.base_model.forward = _patched_forward
-        except Exception:
-            pass
-
     # 6. Format Chat Template Qwen2.5
     tokenizer = get_chat_template(
         tokenizer,
