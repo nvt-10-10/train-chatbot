@@ -187,16 +187,30 @@ def main():
     Trainer.__init__ = _patched_trainer_init
 
     # ------------------------------------------------------------
-    # FIX: UnslothFusedLoss trả về VIEW tensor -> Clone loss
+    # FIX: UnslothFusedLoss + Transformers 5.x loss scaling inplace
     # ------------------------------------------------------------
+    _orig_training_step = Trainer.training_step
+
+    def _patched_training_step(self, model, inputs, num_items_in_batch=None, **kwargs):
+        return _orig_training_step(
+            self,
+            model,
+            inputs,
+            num_items_in_batch=None,
+            **kwargs,
+        )
+
+    Trainer.training_step = _patched_training_step
+
     _orig_compute_loss = Trainer.compute_loss
 
-    def _patched_compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+    def _patched_compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
         result = _orig_compute_loss(
             self,
             model,
             inputs,
             return_outputs=return_outputs,
+            num_items_in_batch=None,
             **kwargs,
         )
 
