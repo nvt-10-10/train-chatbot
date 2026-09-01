@@ -149,8 +149,13 @@ def main():
     print("🔄 Loading & Formatting Dataset...")
     full_dataset = load_dataset("json", data_files=dataset_path, split="train")
     split_dataset = full_dataset.train_test_split(test_size=0.1, seed=3407)
-    train_dataset = split_dataset["train"].map(formatting_prompts_func, batched=True)
-    eval_dataset = split_dataset["test"].map(formatting_prompts_func, batched=True)
+    column_names = full_dataset.column_names
+    train_dataset = split_dataset["train"].map(
+        formatting_prompts_func, batched=True, remove_columns=column_names
+    )
+    eval_dataset = split_dataset["test"].map(
+        formatting_prompts_func, batched=True, remove_columns=column_names
+    )
 
     print(f"📊 Tổng mẫu: {len(full_dataset)} | Train: {len(train_dataset)} | Validation: {len(eval_dataset)}")
 
