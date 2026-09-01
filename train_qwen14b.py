@@ -139,6 +139,11 @@ def main():
             outputs = (outputs[0].clone(),) + outputs[1:]
         return outputs
     model.forward = _patched_forward
+    if hasattr(model, "base_model"):
+        try:
+            model.base_model.forward = _patched_forward
+        except Exception:
+            pass
 
     # 6. Format Chat Template Qwen2.5
     tokenizer = get_chat_template(
