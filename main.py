@@ -10,6 +10,8 @@ import sys
 import logging
 from typing import Optional, Dict, Any
 
+logger = logging.getLogger(__name__)
+
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -90,6 +92,11 @@ def parse_args():
         default="main",
         help="Git branch name (default: main)",
     )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Reset existing cached raw samples and start generation from scratch",
+    )
     return parser.parse_args()
 
 
@@ -98,7 +105,7 @@ async def main_async():
 
     console.print(
         Panel.fit(
-            f"[bold magenta]Hybrid Pipeline - Local Data Generator (Đà Nẵng & Quảng Nam)[/bold magenta]\n"
+            f"[bold magenta]Tráp Lễ Cưới Hỏi Thiên Di - Synthetic Data Generator (Đà Nẵng & Quảng Nam)[/bold magenta]\n"
             f"[cyan]Ollama Model:[/cyan] {args.ollama_model} | [cyan]Host:[/cyan] {args.ollama_host}\n"
             f"[cyan]Target Samples:[/cyan] {args.num_samples} | [cyan]Concurrency:[/cyan] {args.concurrency}\n"
             f"[cyan]Output Directory:[/cyan] {args.output_dir} | [cyan]Auto Git Push:[/cyan] {args.push_git}",
@@ -109,6 +116,11 @@ async def main_async():
     generator = OllamaDataGenerator(
         model_name=args.ollama_model, host=args.ollama_host, concurrency=args.concurrency
     )
+
+    raw_save_path = os.path.join(args.output_dir, "raw_samples.jsonl")
+    if args.reset and os.path.exists(raw_save_path):
+        os.remove(raw_save_path)
+        console.print("[yellow]⚠️ --reset flag passed. Removed existing raw_samples.jsonl checkpoint.[/yellow]")
 
     console.print("\n[bold green]🚀 Step 1: Generating Synthetic Consulting Dialogues via Ollama...[/bold green]\n")
     
@@ -126,29 +138,54 @@ async def main_async():
     ) as progress:
         task = progress.add_task("[yellow]Generating dialogues...", total=args.num_samples)
         
-        def update_progress(count: int, sample: Optional[Dict[str, Any]] = None):
+        def update_progress(count: int, sample: Optional[Dict[str, Any]] = None, is_initial: bool = False):
             nonlocal sample_counter
+            if is_initial:
+                sample_counter += count
+                progress.update(task, completed=count)
+                if count > 0:
+                    console.print(f"[bold cyan]🔄 Loaded {count} existing raw samples from checkpoint: {raw_save_path}[/bold cyan]")
+                return
+
             progress.update(task, advance=count)
             if sample and isinstance(sample, dict) and "messages" in sample:
-                sample_counter += 1
                 messages = sample.get("messages", [])
-                
-                # Extract first User and Assistant content for preview
-                user_msg = next((m.get("content") for m in messages if m.get("role") == "user"), "")
-                ast_msg = next((m.get("content") for m in messages if m.get("role") == "assistant"), "")
-                
-                # Print live preview panel in console
-                console.print(
-                    Panel(
-                        f"[bold cyan]👤 Khách hàng:[/bold cyan] {user_msg[:180]}...\n\n"
-                        f"[bold green]🤖 Shop tư vấn:[/bold green] {ast_msg[:250]}...",
-                        title=f"[bold bright_yellow]✨ Live Preview [Mẫu #{sample_counter} Complete][/bold bright_yellow]",
-                        border_style="cyan",
+                if isinstance(messages, list):
+                    sample_counter += 1
+                    
+                    # Extract first User and Assistant content for preview
+                    user_msg = next(
+                        (
+                            m.get("content")
+                            for m in messages
+                            if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str)
+                        ),
+                        "",
                     )
-                )
+                    ast_msg = next(
+                        (
+                            m.get("content")
+                            for m in messages
+                            if isinstance(m, dict) and m.get("role") == "assistant" and isinstance(m.get("content"), str)
+                        ),
+                        "",
+                    )
+                    
+                    # Print live preview panel in console and write to logger
+                    logger.info(f"✨ [Mẫu #{sample_counter}/{args.num_samples}] hoàn thành | Khách: {user_msg[:60]}...")
+                    console.print(
+                        Panel(
+                            f"[bold cyan]👤 Khách hàng:[/bold cyan] {user_msg[:180]}...\n\n"
+                            f"[bold green]🤖 Shop tư vấn:[/bold green] {ast_msg[:250]}...",
+                            title=f"[bold bright_yellow]✨ Live Preview [Mẫu #{sample_counter} Complete][/bold bright_yellow]",
+                            border_style="cyan",
+                        )
+                    )
 
         samples = await generator.generate_dataset(
-            num_samples=args.num_samples, progress_callback=update_progress
+            num_samples=args.num_samples,
+            progress_callback=update_progress,
+            raw_save_path=raw_save_path,
         )
 
     console.print(f"\n[bold green]✅ Generated {len(samples)} raw dialogue samples.[/bold green]")

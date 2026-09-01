@@ -59,8 +59,10 @@ async def main():
     # Print formatted conversation turns
     console.print("\n[bold magenta]=== NỘI DUNG HỘI THOẠI ĐƯỢC SINH TỰ ĐỘNG ===[/bold magenta]\n")
     for msg in sample.get("messages", []):
-        role = msg.get("role", "").upper()
-        content = msg.get("content", "")
+        if not isinstance(msg, dict):
+            continue
+        role = str(msg.get("role", "")).upper()
+        content = str(msg.get("content", ""))
 
         if role == "SYSTEM":
             console.print(Panel(content[:300] + "...", title="[bold yellow]SYSTEM PROMPT[/bold yellow]", border_style="yellow"))

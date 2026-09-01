@@ -8,6 +8,8 @@ import random
 import logging
 from typing import List, Dict, Any, Tuple
 
+from core.generator import compute_sample_signature
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,31 +28,49 @@ class DatasetValidator:
             return False, "Missing 'messages' key"
 
         messages = sample["messages"]
-        if not isinstance(messages, list) or len(messages) < 4:
-            return False, "Dialogue too short (must be >= 4 messages)"
+        if not isinstance(messages, list):
+            return False, "Messages must be a list"
 
-        roles = [m.get("role") for m in messages if isinstance(m, dict)]
+        valid_messages = [
+            m for m in messages
+            if isinstance(m, dict)
+            and isinstance(m.get("role"), str)
+            and isinstance(m.get("content"), str)
+        ]
+        if len(valid_messages) < 4:
+            return False, "Dialogue too short (must be >= 4 valid message dicts)"
+
+        roles = [m.get("role") for m in valid_messages]
         if "user" not in roles or "assistant" not in roles:
             return False, "Missing required roles (user/assistant)"
 
-        full_text = " ".join([m.get("content", "") for m in messages]).lower()
+        full_text = " ".join([m.get("content") for m in valid_messages]).lower()
 
         # Strict Rule 1: Heo Quay policy check
         # If heo quay is mentioned, assistant must clearly state shop DOES NOT supply roasted pig.
         if "heo quay" in full_text:
             assistant_texts = " ".join(
-                [m.get("content", "").lower() for m in messages if m.get("role") == "assistant"]
+                [m.get("content").lower() for m in valid_messages if m.get("role") == "assistant"]
             )
             has_disclaimer = any(
                 phrase in assistant_texts
                 for phrase in [
                     "không bán heo quay",
+                    "không bán tráp heo quay",
                     "không cung cấp heo quay",
+                    "không cung cấp tráp heo quay",
                     "không có heo quay",
-                    "tự đặt heo quay",
-                    "tự mang heo quay",
-                    "xếp mâm giúp",
-                    "decor miễn phí",
+                    "không có tráp heo quay",
+                    "không làm heo quay",
+                    "không làm tráp heo quay",
+                    "không nhận heo quay",
+                    "không nhận làm",
+                    "không có cái này",
+                    "không có dịch vụ",
+                    "chưa có dịch vụ",
+                    "chưa hỗ trợ",
+                    "bên em không làm",
+                    "bên shop không làm",
                 ]
             )
             if not has_disclaimer:
@@ -69,10 +89,23 @@ class DatasetValidator:
             "thường",
             "hoa tươi",
             "burgundy",
+            "tone",
+            "màu",
+            "hồng",
+            "vàng",
+            "trắng",
             "nem chả",
             "trầu cau",
             "miễn phí",
             "ship",
+            "10km",
+            "bán kính",
+            "hư hao",
+            "079 944 4167",
+            "phan châu trinh",
+            "zalo",
+            "facebook",
+            "tam kỳ",
         ]
         keyword_hits = sum(1 for kw in required_keywords if kw in full_text)
         if keyword_hits < 3:
@@ -88,12 +121,20 @@ class DatasetValidator:
         Returns (total_valid, train_count, val_count).
         """
         valid_samples = []
+        seen_signatures = set()
         rejected_count = 0
 
         for sample in samples:
             is_valid, reason = self.validate_sample(sample)
             if is_valid:
-                valid_samples.append(sample)
+                sig = compute_sample_signature(sample)
+                if sig and sig in seen_signatures:
+                    rejected_count += 1
+                    logger.debug("Sample rejected during QC: Duplicate content signature")
+                else:
+                    if sig:
+                        seen_signatures.add(sig)
+                    valid_samples.append(sample)
             else:
                 rejected_count += 1
                 logger.debug(f"Sample rejected: {reason}")

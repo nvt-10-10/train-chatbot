@@ -23,7 +23,7 @@ CUSTOMER_PERSONAS: List[Dict[str, Any]] = [
         "preference": "Bộ 5 Tráp Thường (Hoa tươi cơ bản)",
         "trait": "Thích nét đẹp mộc mạc đan mây, viền hoa tươi Burgundy tinh tế, tiết kiệm ngân sách nhưng vẫn chỉn chu.",
         "custom_items": "Tự mang bánh in đặc sản Hội An và mứt hạt sen gia đình làm tới nhờ shop trang trí viền hoa tươi.",
-        "shipping_need": "Giao tận nhà ở Hội An, quan tâm màng co bảo vệ chống xốc và phí ship."
+        "shipping_need": "Giao tận nhà ở Hội An, quan tâm an toàn bảo vệ tráp và phí ship."
     },
     {
         "id": "qn_dienban_heoquay_query",
@@ -31,7 +31,7 @@ CUSTOMER_PERSONAS: List[Dict[str, Any]] = [
         "location": "Thi xã Điện Bàn, Quảng Nam",
         "budget_level": "Truyền thống",
         "preference": "Bộ 5 Tráp Rồng Phượng + Hỏi thêm Heo Quay",
-        "trait": "Hỏi rõ shop có làm tráp Heo Quay không. Shop cần khéo léo giải thích KHÔNG bán heo quay nhưng sẵn sàng hỗ trợ xếp mâm nếu gia đình tự đặt heo quay mang tới.",
+        "trait": "Hỏi rõ shop có làm tráp Heo Quay hoặc nhận xếp heo quay không. Shop cần từ tốn từ chối ngay vì shop hoàn toàn KHÔNG làm và KHÔNG nhận xếp tráp Heo Quay dưới mọi hình thức, sau đó khéo léo hướng dẫn khách chọn Bộ 5 Tráp Quả nghệ thuật.",
         "custom_items": "Muốn hỏi mang heo quay hoặc bánh su xê tới.",
         "shipping_need": "Giao về Điện Bàn (gần Nam Phước), cần đảm bảo hoa tươi không bị dập."
     },
@@ -40,7 +40,7 @@ CUSTOMER_PERSONAS: List[Dict[str, Any]] = [
         "name": "Chị Thanh (Quận Cẩm Lệ, Đà Nẵng)",
         "location": "Quận Cẩm Lệ, Đà Nẵng",
         "budget_level": "Tiêu chuẩn",
-        "preference": "Bộ 5 Tráp Thường (Đế mây, hoa tươi Burgundy)",
+        "preference": "Bộ 5 Tráp Thường (Đế tráp linh hoạt, hoa tươi Burgundy)",
         "trait": "Cần tư vấn chi tiết từng tráp gồm những gì (Trái cây, Trầu cau cánh phụng, Trà rượu, Nem chả, Bánh cưới).",
         "custom_items": "Tự mang bánh cưới/bánh kem tháp hoa tới shop xếp.",
         "shipping_need": "Giao Cẩm Lệ, Đà Nẵng."
@@ -51,7 +51,7 @@ CUSTOMER_PERSONAS: List[Dict[str, Any]] = [
         "location": "TP. Tam Kỳ, Quảng Nam",
         "budget_level": "Cao cấp",
         "preference": "Bộ 5 Tráp Rồng Phượng",
-        "trait": "Lo lắng giao hàng xa từ Đà Nẵng vào Tam Kỳ. Cần shop cam kết bọc màng co chống xốc kỹ càng và báo phí ship minh bạch.",
+        "trait": "Lo lắng giao hàng xa từ Đà Nẵng vào Tam Kỳ. Cần shop cam kết vận chuyển cẩn thận và báo phí ship minh bạch.",
         "custom_items": "Không mang đồ riêng, dùng trọn gói của shop.",
         "shipping_need": "Giao xa Tam Kỳ, Quảng Nam."
     },
@@ -64,5 +64,15 @@ CUSTOMER_PERSONAS: List[Dict[str, Any]] = [
         "trait": "Giọng đậm Quảng Nam (dầm ngõ, mâm quả, chốt giùm tui). Muốn tự chuẩn bị bánh su xê và chả bò quê mang đến shop decor.",
         "custom_items": "Tự đem bánh su xê và chả bò nhà làm tới shop decor hoa tươi.",
         "shipping_need": "Giao về Duy Xuyên."
+    },
+    {
+        "id": "dn_sontra_color_tone_custom",
+        "name": "Chị Linh (Quận Sơn Trà, Đà Nẵng)",
+        "location": "Quận Sơn Trà, Đà Nẵng",
+        "budget_level": "Cao cấp / Hiện đại",
+        "preference": "Bộ 5 Tráp Rồng Phượng (Tone Hồng Pastel / Trắng Tinh Khôi)",
+        "trait": "Thích concept hiện đại, muốn chọn tone màu hoa tươi riêng (Hồng Pastel hoặc Trắng Tinh Khôi) thay vì tone Đỏ Burgundy truyền thống.",
+        "custom_items": "Muốn tư vấn phối tone màu hoa phù hợp áo dài tiệc cưới.",
+        "shipping_need": "Giao tận nơi Sơn Trà, Đà Nẵng."
     }
 ]
