@@ -8,69 +8,34 @@ Export target: Ollama GGUF (q4_k_m) + Modelfile
 
 import os
 import sys
-import subprocess
 
 # Disable WANDB to prevent circular import issues on Kaggle/Colab
 os.environ["WANDB_DISABLED"] = "true"
 
-def install_dependencies():
-    """Kiểm tra và tự động sửa các lỗi tương thích thư viện (unsloth, torchvision, trl)."""
+def check_environment():
+    """Kiểm tra sơ bộ môi trường huấn luyện."""
     try:
         import torch
-        import torchvision
-        if hasattr(torch, "__version__") and "2.13" in torch.__version__:
-            if hasattr(torchvision, "__version__") and torchvision.__version__ < "0.28":
-                print("⚙️ Cập nhật torchvision>=0.28.0 cho tương thích với PyTorch 2.13...")
-                subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "--upgrade", "torchvision>=0.28.0"],
-                    check=False,
-                )
-    except Exception:
-        pass
-
-    try:
-        import unsloth
-        import unsloth_zoo
-    except Exception:
-        print("⚙️ Cài đặt Unsloth & Unsloth Zoo...")
-        cmds = [
-            [sys.executable, "-m", "pip", "install", "--no-deps", "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"],
-            [sys.executable, "-m", "pip", "install", "--no-deps", "unsloth_zoo"],
-            [sys.executable, "-m", "pip", "install", "trl==0.8.6", "peft", "accelerate", "bitsandbytes", "datasets", "huggingface_hub"],
-        ]
-        for cmd in cmds:
-            subprocess.run(cmd, check=False)
+        print(f"📌 PyTorch Version: {torch.__version__}")
+        print(f"📌 CUDA Available: {torch.cuda.is_available()}")
+    except ImportError:
+        print("❌ Chưa cài đặt PyTorch!")
 
 def main():
     print("=" * 65)
     print("🚀 UNSLOTH QWEN2.5-14B-INSTRUCT FINE-TUNING PIPELINE (.PY VERSION)")
     print("=" * 65)
 
-    # 1. Tự động kiểm tra & Cài đặt thư viện nếu thiếu
-    install_dependencies()
+    check_environment()
 
     import torch
     from datasets import load_dataset
-    
-    try:
-        from unsloth import FastLanguageModel, is_bfloat16_supported
-        from unsloth.chat_templates import get_chat_template
-    except ImportError as e:
-        if "torchvision" in str(e):
-            print("⚙️ Phát hiện lỗi torchvision version! Đang tự động nâng cấp torchvision...")
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--upgrade", "torchvision>=0.28.0"],
-                check=False,
-            )
-            from unsloth import FastLanguageModel, is_bfloat16_supported
-            from unsloth.chat_templates import get_chat_template
-        else:
-            raise e
-
+    from unsloth import FastLanguageModel, is_bfloat16_supported
+    from unsloth.chat_templates import get_chat_template
     from trl import SFTTrainer
     from transformers import TrainingArguments
 
-    # 2. Xác định Môi trường (Kaggle, Colab, hay Local)
+    # 1. Xác định Môi trường (Kaggle, Colab, hay Local)
     is_kaggle = os.path.exists("/kaggle/working")
     is_colab = "COLAB_GPU" in os.environ or os.path.exists("/content")
 
@@ -92,7 +57,7 @@ def main():
 
     os.makedirs(output_base_dir, exist_ok=True)
 
-    # 3. Kiểm tra GPU
+    # 2. Kiểm tra GPU
     if not torch.cuda.is_available():
         print("❌ CRITICAL: Cần có GPU CUDA để tiến hành Fine-tune mô hình 14B!")
         sys.exit(1)
@@ -102,7 +67,7 @@ def main():
     print(f"📌 GPU Device: {gpu_stats.name} (Số lượng GPU: {gpu_count})")
     print(f"📌 Total VRAM: {gpu_stats.total_memory / 1024**3:.2f} GB")
 
-    # 4. Tìm file Dataset
+    # 3. Tìm file Dataset
     import glob
     possible_paths = [
         "/kaggle/input/**/raw_samples.jsonl",
@@ -131,7 +96,7 @@ def main():
 
     print(f"✅ Đã tìm thấy dataset: {dataset_path}")
 
-    # 5. Cấu hình Model 14B QLoRA 4-bit
+    # 4. Cấu hình Model 14B QLoRA 4-bit
     max_seq_length = 2048
     model_name = "unsloth/Qwen2.5-14B-Instruct-bnb-4bit"
 
@@ -143,7 +108,7 @@ def main():
         load_in_4bit=True,
     )
 
-    # 6. Thiết lập QLoRA Adapters
+    # 5. Thiết lập QLoRA Adapters
     print("⚙️ Setting up PEFT / QLoRA adapters...")
     model = FastLanguageModel.get_peft_model(
         model,
@@ -164,7 +129,7 @@ def main():
         random_state=3407,
     )
 
-    # 7. Format Chat Template Qwen2.5
+    # 6. Format Chat Template Qwen2.5
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="qwen-2.5",
@@ -180,7 +145,7 @@ def main():
         ]
         return {"text": texts}
 
-    # 8. Load & Prepare Dataset
+    # 7. Load & Prepare Dataset
     print("🔄 Loading & Formatting Dataset...")
     full_dataset = load_dataset("json", data_files=dataset_path, split="train")
     split_dataset = full_dataset.train_test_split(test_size=0.1, seed=3407)
@@ -189,7 +154,7 @@ def main():
 
     print(f"📊 Tổng mẫu: {len(full_dataset)} | Train: {len(train_dataset)} | Validation: {len(eval_dataset)}")
 
-    # 9. Huấn luyện SFTTrainer
+    # 8. Huấn luyện SFTTrainer
     checkpoints_dir = os.path.join(output_base_dir, "checkpoints")
     trainer = SFTTrainer(
         model=model,
@@ -226,7 +191,7 @@ def main():
     trainer_stats = trainer.train()
     print(f"✅ Training completed in {trainer_stats.metrics['train_runtime']:.2f} seconds!")
 
-    # 10. Test Inference Phản hồi
+    # 9. Test Inference Phản hồi
     print("\n🧪 TESTING INFERENCE AFTER FINE-TUNING...")
     FastLanguageModel.for_inference(model)
 
@@ -256,7 +221,7 @@ def main():
     else:
         print(decoded)
 
-    # 11. Save GGUF & Modelfile cho Ollama
+    # 10. Save GGUF & Modelfile cho Ollama
     gguf_dir = os.path.join(output_base_dir, "qwen2.5_14b_gguf")
     lora_dir = os.path.join(output_base_dir, "qwen2.5_14b_lora")
 
