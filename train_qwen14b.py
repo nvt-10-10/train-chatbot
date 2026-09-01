@@ -136,14 +136,13 @@ def main():
     )
 
     def formatting_prompts_func(examples):
-        convs = examples["messages"]
-        texts = [
-            tokenizer.apply_chat_template(
-                convo, tokenize=False, add_generation_prompt=False
-            )
-            for convo in convs
+        convos = examples["messages"]
+        if isinstance(convos[0], dict):
+            return [tokenizer.apply_chat_template(convos, tokenize=False, add_generation_prompt=False)]
+        return [
+            tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False)
+            for convo in convos
         ]
-        return {"text": texts}
 
     # 7. Load & Prepare Dataset
     print("🔄 Loading Dataset...")
