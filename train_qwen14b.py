@@ -174,7 +174,7 @@ def main():
             fp16=not is_bfloat16_supported(),
             bf16=is_bfloat16_supported(),
             logging_steps=5,
-            evaluation_strategy="steps",
+            eval_strategy="steps",
             eval_steps=20,
             save_strategy="steps",
             save_steps=20,
