@@ -156,6 +156,22 @@ def main():
 
     # 8. Huấn luyện SFTTrainer
     checkpoints_dir = os.path.join(output_base_dir, "checkpoints")
+
+    # Compatibility patch for transformers v4.47+/v5.x with trl 0.8.6
+    from transformers import Trainer
+    _orig_trainer_init = Trainer.__init__
+    def _patched_trainer_init(self, *args, **kwargs):
+        if "tokenizer" in kwargs and "processing_class" not in kwargs:
+            kwargs["processing_class"] = kwargs.pop("tokenizer")
+        try:
+            return _orig_trainer_init(self, *args, **kwargs)
+        except TypeError as e:
+            if "processing_class" in kwargs and "unexpected keyword argument 'processing_class'" in str(e):
+                kwargs["tokenizer"] = kwargs.pop("processing_class")
+                return _orig_trainer_init(self, *args, **kwargs)
+            raise e
+    Trainer.__init__ = _patched_trainer_init
+
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
