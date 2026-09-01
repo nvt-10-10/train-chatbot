@@ -14,19 +14,29 @@ import subprocess
 os.environ["WANDB_DISABLED"] = "true"
 
 def install_dependencies():
-    """Tự động kiểm tra và cài đặt phiên bản chuẩn của Unsloth & dependencies."""
+    """Kiểm tra và tự động sửa các lỗi tương thích thư viện (unsloth, torchvision, trl)."""
     try:
-        import trl
+        import torch
+        import torchvision
+        if hasattr(torch, "__version__") and "2.13" in torch.__version__:
+            if hasattr(torchvision, "__version__") and torchvision.__version__ < "0.28":
+                print("⚙️ Cập nhật torchvision>=0.28.0 cho tương thích với PyTorch 2.13...")
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--upgrade", "torchvision>=0.28.0"],
+                    check=False,
+                )
+    except Exception:
+        pass
+
+    try:
         import unsloth
         import unsloth_zoo
-        # Check if trl has ConstantLengthDataset
-        from trl.trainer.utils import ConstantLengthDataset
     except Exception:
-        print("⚙️ Đang tiến hành cài đặt/cập nhật phiên bản thư viện tương thích (trl==0.8.6, unsloth, unsloth_zoo)...")
+        print("⚙️ Cài đặt Unsloth & Unsloth Zoo...")
         cmds = [
-            [sys.executable, "-m", "pip", "install", "--force-reinstall", "trl==0.8.6"],
-            [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", "--no-cache-dir", "unsloth", "unsloth_zoo"],
-            [sys.executable, "-m", "pip", "install", "peft", "accelerate", "bitsandbytes", "datasets", "huggingface_hub"],
+            [sys.executable, "-m", "pip", "install", "--no-deps", "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"],
+            [sys.executable, "-m", "pip", "install", "--no-deps", "unsloth_zoo"],
+            [sys.executable, "-m", "pip", "install", "trl==0.8.6", "peft", "accelerate", "bitsandbytes", "datasets", "huggingface_hub"],
         ]
         for cmd in cmds:
             subprocess.run(cmd, check=False)
@@ -41,8 +51,22 @@ def main():
 
     import torch
     from datasets import load_dataset
-    from unsloth import FastLanguageModel, is_bfloat16_supported
-    from unsloth.chat_templates import get_chat_template
+    
+    try:
+        from unsloth import FastLanguageModel, is_bfloat16_supported
+        from unsloth.chat_templates import get_chat_template
+    except ImportError as e:
+        if "torchvision" in str(e):
+            print("⚙️ Phát hiện lỗi torchvision version! Đang tự động nâng cấp torchvision...")
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--upgrade", "torchvision>=0.28.0"],
+                check=False,
+            )
+            from unsloth import FastLanguageModel, is_bfloat16_supported
+            from unsloth.chat_templates import get_chat_template
+        else:
+            raise e
+
     from trl import SFTTrainer
     from transformers import TrainingArguments
 
@@ -85,6 +109,8 @@ def main():
         "/kaggle/input/**/dataset.jsonl",
         "/content/drive/MyDrive/raw_samples.jsonl",
         "/content/drive/MyDrive/data-train/raw_samples.jsonl",
+        "/content/drive/MyDrive/train-chatbot/data/raw_samples.jsonl",
+        "data/raw_samples.jsonl",
         "data-train/raw_samples.jsonl",
         "raw_samples.jsonl",
         "data-train/dataset.jsonl",
