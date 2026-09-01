@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 🚀 Single-file Python Script to Fine-tune Qwen2.5-14B-Instruct using Unsloth (QLoRA)
-Compatible with: Kaggle, Google Colab, and Local GPU Server.
+Compatible with: Kaggle, Google Colab (Tesla T4), and Local GPU Server.
 Dataset target: raw_samples.jsonl / dataset.jsonl
 Export target: Ollama GGUF (q4_k_m) + Modelfile
 """
@@ -9,7 +9,8 @@ Export target: Ollama GGUF (q4_k_m) + Modelfile
 import os
 import sys
 
-# Disable WANDB to prevent circular import issues on Kaggle/Colab
+# Giảm CUDA memory fragmentation & disable WANDB
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["WANDB_DISABLED"] = "true"
 
 def check_environment():
@@ -96,8 +97,8 @@ def main():
 
     print(f"✅ Đã tìm thấy dataset: {dataset_path}")
 
-    # 4. Cấu hình Model 14B QLoRA 4-bit
-    max_seq_length = 2048
+    # 4. Cấu hình Model 14B QLoRA 4-bit (1024 max sequence cho T4 16GB)
+    max_seq_length = 1024
     model_name = "unsloth/Qwen2.5-14B-Instruct-bnb-4bit"
 
     print(f"\n📦 Loading Model & Tokenizer: {model_name}...")
@@ -231,32 +232,29 @@ def main():
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
         dataset_text_field="text",
         max_seq_length=max_seq_length,
         dataset_num_proc=2,
         packing=False,
         args=TrainingArguments(
             output_dir=checkpoints_dir,
-            per_device_train_batch_size=2,
-            gradient_accumulation_steps=4,
+            per_device_train_batch_size=1,
+            gradient_accumulation_steps=8,
             num_train_epochs=3,
             learning_rate=2e-4,
             warmup_steps=10,
             fp16=not is_bfloat16_supported(),
             bf16=is_bfloat16_supported(),
             logging_steps=5,
-            eval_strategy="steps",
-            eval_steps=20,
-            save_strategy="steps",
-            save_steps=20,
-            save_total_limit=2,
-            optim="adamw_8bit",
+            eval_strategy="no",
+            save_strategy="epoch",
+            optim="paged_adamw_8bit",
             weight_decay=0.01,
             lr_scheduler_type="linear",
             seed=3407,
             report_to="none",
             remove_unused_columns=True,
+            prediction_loss_only=True,
         ),
     )
 
