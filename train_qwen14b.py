@@ -156,9 +156,13 @@ def main():
 
     # 8. Huấn luyện SFTTrainer
     checkpoints_dir = os.path.join(output_base_dir, "checkpoints")
+    os.makedirs(checkpoints_dir, exist_ok=True)
 
-    # Compatibility patch for transformers v4.47+/v5.x with trl 0.8.6
+    # ------------------------------------------------------------
+    # Compatibility patch cho Transformers mới & Trainer.__init__
+    # ------------------------------------------------------------
     from transformers import Trainer
+
     _orig_trainer_init = Trainer.__init__
     def _patched_trainer_init(self, *args, **kwargs):
         if "tokenizer" in kwargs and "processing_class" not in kwargs:
@@ -166,11 +170,42 @@ def main():
         try:
             return _orig_trainer_init(self, *args, **kwargs)
         except TypeError as e:
-            if "processing_class" in kwargs and "unexpected keyword argument 'processing_class'" in str(e):
+            if (
+                "processing_class" in kwargs
+                and "unexpected keyword argument 'processing_class'" in str(e)
+            ):
                 kwargs["tokenizer"] = kwargs.pop("processing_class")
                 return _orig_trainer_init(self, *args, **kwargs)
-            raise e
+            raise
+
     Trainer.__init__ = _patched_trainer_init
+
+    # ------------------------------------------------------------
+    # FIX: UnslothFusedLoss trả về VIEW tensor -> Clone loss
+    # ------------------------------------------------------------
+    _orig_compute_loss = Trainer.compute_loss
+
+    def _patched_compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        result = _orig_compute_loss(
+            self,
+            model,
+            inputs,
+            return_outputs=return_outputs,
+            **kwargs,
+        )
+
+        if return_outputs:
+            loss, outputs = result
+            if isinstance(loss, torch.Tensor):
+                loss = loss.clone()
+            return loss, outputs
+
+        if isinstance(result, torch.Tensor):
+            return result.clone()
+
+        return result
+
+    Trainer.compute_loss = _patched_compute_loss
 
     trainer = SFTTrainer(
         model=model,
@@ -182,11 +217,12 @@ def main():
         dataset_num_proc=2,
         packing=False,
         args=TrainingArguments(
+            output_dir=checkpoints_dir,
             per_device_train_batch_size=2,
             gradient_accumulation_steps=4,
-            warmup_steps=10,
             num_train_epochs=3,
             learning_rate=2e-4,
+            warmup_steps=10,
             fp16=not is_bfloat16_supported(),
             bf16=is_bfloat16_supported(),
             logging_steps=5,
@@ -194,12 +230,13 @@ def main():
             eval_steps=20,
             save_strategy="steps",
             save_steps=20,
+            save_total_limit=2,
             optim="adamw_8bit",
             weight_decay=0.01,
             lr_scheduler_type="linear",
             seed=3407,
-            output_dir=checkpoints_dir,
             report_to="none",
+            remove_unused_columns=False,
         ),
     )
 
